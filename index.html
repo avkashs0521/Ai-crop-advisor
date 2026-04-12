@@ -5,50 +5,198 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Crop Disease Detector & Farm Advisor</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Load TensorFlow.js -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <!-- Load Teachable Machine Image Model -->
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 </head>
 <body>
-    <header class="app-header">
-        <div class="logo">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
-            </svg>
-            <h1>AI Crop Advisor</h1>
+    <!-- Top Navbar -->
+    <nav class="navbar glass-nav">
+        <div class="nav-container">
+            <div class="logo">
+                <svg class="leaf-anim" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                </svg>
+                <h1 class="nav-brand">Crop<span class="highlight">Advisor</span></h1>
+            </div>
+            <div class="nav-links">
+                <a href="#">Home</a>
+                <a href="#upload-section">Analyze</a>
+                <a href="#history-list">History</a>
+                
+                <!-- Pure CSS Dark/Light Mode Switch -->
+                <label class="theme-switch" title="Toggle Theme">
+                    <input type="checkbox" id="theme-toggle">
+                    <span class="slider round"></span>
+                </label>
+            </div>
         </div>
-        <p class="subtitle">Instant disease detection & prevention advice for farmers</p>
+    </nav>
+
+    <!-- Header Section -->
+    <header class="app-header glass slide-up">
+        <div class="header-content-wrapper">
+            <div class="header-left">
+                <div class="badge-pill mb-1">🌿 Intelligent SaaS Agriculture</div>
+                <h1>Smarter Farming,<br><span class="highlight">Powered by AI</span></h1>
+                <p class="subtitle mt-1">Upload a photo of your crop to instantly identify diseases and receive actionable, farm-friendly prevention advice.</p>
+            </div>
+            <div class="header-farmer float-anim">
+                <svg viewBox="0 0 160 200" width="160px" xmlns="http://www.w3.org/2000/svg">
+                    <ellipse cx="80" cy="50" rx="35" ry="12" fill="#EF9F27" />
+                    <path d="M60 50 Q80 20 100 50" fill="#EF9F27" />
+                    <circle cx="80" cy="70" r="15" fill="#c8845a" />
+                    <rect x="65" y="85" width="30" height="40" fill="var(--primary-dark)" rx="5" />
+                    <path d="M65 95 L50 115 L65 125" stroke="var(--primary-dark)" stroke-width="6" stroke-linecap="round" fill="none" />
+                    <path d="M95 95 L110 115 L95 125" stroke="var(--primary-dark)" stroke-width="6" stroke-linecap="round" fill="none" />
+                    <path d="M72 125 L72 165" stroke="var(--text-main)" stroke-width="8" stroke-linecap="round" />
+                    <path d="M88 125 L88 165" stroke="var(--text-main)" stroke-width="8" stroke-linecap="round" />
+                    <rect x="58" y="115" width="14" height="20" fill="var(--bg-card)" rx="2" transform="rotate(-15 65 125)" />
+                    <rect x="60" y="117" width="10" height="16" fill="var(--primary)" rx="1" transform="rotate(-15 65 125)" />
+                    <!-- Crops -->
+                    <g transform="translate(0, 165)">
+                        <path d="M30 35 L30 15 M30 15 Q35 10 38 12 M30 15 Q25 10 22 12" stroke="var(--primary)" stroke-width="1.5" fill="none" />
+                        <path d="M55 35 L55 10 M55 10 Q60 5 63 7 M55 10 Q50 5 47 7" stroke="var(--primary)" stroke-width="1.5" fill="none" />
+                        <path d="M80 35 L80 18 M80 18 Q85 13 88 15 M80 18 Q75 13 72 15" stroke="var(--primary)" stroke-width="1.5" fill="none" />
+                        <path d="M105 35 L105 12 M105 12 Q110 7 113 9 M105 12 Q100 7 97 9" stroke="var(--primary)" stroke-width="1.5" fill="none" />
+                        <path d="M130 35 L130 16 M130 16 Q135 11 138 13 M130 16 Q125 11 122 13" stroke="var(--primary)" stroke-width="1.5" fill="none" />
+                        <line x1="10" y1="35" x2="150" y2="35" stroke="var(--primary)" stroke-width="2" />
+                    </g>
+                </svg>
+            </div>
+        </div>
     </header>
 
     <main class="container">
         <div class="main-content">
             <!-- Upload Section -->
-            <section class="card upload-section" id="upload-section">
+            <section class="card glass upload-section slide-up delay-1" id="upload-section">
                 <div class="drop-zone" id="drop-zone">
                     <div class="drop-content">
-                        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-                        </svg>
-                        <p>Drag and drop a crop leaf image here</p>
-                        <p class="text-sm text-gray">or</p>
-                        <label for="file-input" class="btn primary-btn">Browse Files</label>
+                        <div class="upload-icon-wrapper">
+                            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                            </svg>
+                        </div>
+                        <p class="drop-title">Drag & Drop your crop image here</p>
+                        <p class="text-sm text-gray">Supported formats: JPG, PNG, WEBP</p>
+                        <label for="file-input" class="btn primary-btn mt-1">Browse Files</label>
                         <input type="file" id="file-input" accept="image/*" hidden>
                     </div>
+                    <!-- Image Preview -->
                     <img id="image-preview" class="preview-img hidden" alt="Image Preview">
                 </div>
-                <div class="actions center hidden" id="action-container">
-                    <button id="analyze-btn" class="btn primary-btn large-btn">
+                <div class="actions center hidden mt-2" id="action-container">
+                    <button id="analyze-btn" class="btn gradient-btn large-btn">
                         <span class="btn-text">Analyze Crop</span>
                         <div class="spinner hidden" id="loading-spinner"></div>
                     </button>
-                    <button id="reset-btn" class="btn secondary-btn">Reset</button>
+                    <button id="reset-btn" class="btn secondary-btn ghost-btn">Clear Form</button>
+                </div>
+        </section>
+
+            <!-- Common Crop Diseases Section -->
+            <section class="diseases-section slide-up delay-1 mt-2">
+                <div class="section-title-wrap">
+                    <h2 class="news-heading">🌱 Common Crop Diseases You Should Know</h2>
+                </div>
+                <div class="diseases-scroll-container">
+                    <div class="disease-card glass hover-lift">
+                        <div class="disease-icon leaf-spot-color"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="9" cy="9" r="1.5"/><circle cx="14" cy="14" r="2"/></svg></div>
+                        <h3 class="disease-card-title">Leaf Spot</h3>
+                        <p class="disease-crop">🍅 Tomato, 🌾 Wheat</p>
+                        <ul class="disease-symptoms">
+                            <li>Brown/black circular spots</li>
+                            <li>Yellowing halos on leaves</li>
+                        </ul>
+                        <div class="disease-prevention"><strong>Prevention:</strong> Crop rotation, remove debris.</div>
+                        <div class="disease-footer">
+                            <span class="disease-severity severity-med">Medium Risk</span>
+                            <a href="#" class="learn-more-link">Learn More →</a>
+                        </div>
+                    </div>
+
+                    <div class="disease-card glass hover-lift">
+                        <div class="disease-icon powdery-color"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5l2 2m10-2l-2 2m-5 9v4m-4-2H5m14 0h-4M7 11a5 5 0 1 1 10 0"/></svg></div>
+                        <h3 class="disease-card-title">Powdery Mildew</h3>
+                        <p class="disease-crop">🥒 Cucumber, 🍇 Grapes</p>
+                        <ul class="disease-symptoms">
+                            <li>White powdery spots on leaves</li>
+                            <li>Stunted plant growth</li>
+                        </ul>
+                        <div class="disease-prevention"><strong>Prevention:</strong> Provide good air circulation.</div>
+                        <div class="disease-footer">
+                            <span class="disease-severity severity-high">High Risk</span>
+                            <a href="#" class="learn-more-link">Learn More →</a>
+                        </div>
+                    </div>
+
+                    <div class="disease-card glass hover-lift">
+                        <div class="disease-icon rust-color"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+                        <h3 class="disease-card-title">Rust Disease</h3>
+                        <p class="disease-crop">🌾 Wheat</p>
+                        <ul class="disease-symptoms">
+                            <li>Rusty orange/brown pustules</li>
+                            <li>Premature leaf drop</li>
+                        </ul>
+                        <div class="disease-prevention"><strong>Prevention:</strong> Plant resistant varieties.</div>
+                        <div class="disease-footer">
+                            <span class="disease-severity severity-med">Medium Risk</span>
+                            <a href="#" class="learn-more-link">Learn More →</a>
+                        </div>
+                    </div>
+
+                    <div class="disease-card glass hover-lift">
+                        <div class="disease-icon blight-color"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 11H5m14 0a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2m14 0V9a2 2 0 0 0-2-2M5 11V9a2 2 0 0 1 2-2m0 0V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2M7 7h10"/></svg></div>
+                        <h3 class="disease-card-title">Bacterial Blight</h3>
+                        <p class="disease-crop">🍚 Rice</p>
+                        <ul class="disease-symptoms">
+                            <li>Water-soaked leaf streaks</li>
+                            <li>Leaves turn yellow/white</li>
+                        </ul>
+                        <div class="disease-prevention"><strong>Prevention:</strong> Avoid excess nitrogen use.</div>
+                        <div class="disease-footer">
+                            <span class="disease-severity severity-high">High Risk</span>
+                            <a href="#" class="learn-more-link">Learn More →</a>
+                        </div>
+                    </div>
+
+                    <div class="disease-card glass hover-lift">
+                        <div class="disease-icon earlyblight-color"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v2m4-2v2M3 10h2m14 0h2M7.5 7.5L9 9m6 0l1.5-1.5M7.5 16.5L9 15m6 0l1.5 1.5M12 18v2"/></svg></div>
+                        <h3 class="disease-card-title">Early Blight</h3>
+                        <p class="disease-crop">🥔 Potato, 🍅 Tomato</p>
+                        <ul class="disease-symptoms">
+                            <li>Target-like concentric rings</li>
+                            <li>Lower leaves affected first</li>
+                        </ul>
+                        <div class="disease-prevention"><strong>Prevention:</strong> Mulch to prevent soil splash.</div>
+                        <div class="disease-footer">
+                            <span class="disease-severity severity-high">High Risk</span>
+                            <a href="#" class="learn-more-link">Learn More →</a>
+                        </div>
+                    </div>
+
+                    <div class="disease-card glass hover-lift">
+                        <div class="disease-icon mildew-color"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m-4-4l4 4 4-4m-4-12l-4 4-4-4"/></svg></div>
+                        <h3 class="disease-card-title">Downy Mildew</h3>
+                        <p class="disease-crop">🍇 Grapes</p>
+                        <ul class="disease-symptoms">
+                            <li>Yellow oily spots on top</li>
+                            <li>White fuzz on undersides</li>
+                        </ul>
+                        <div class="disease-prevention"><strong>Prevention:</strong> Improve drainage, prune vines.</div>
+                        <div class="disease-footer">
+                            <span class="disease-severity severity-med">Medium Risk</span>
+                            <a href="#" class="learn-more-link">Learn More →</a>
+                        </div>
+                    </div>
                 </div>
             </section>
 
             <!-- Results Section -->
-            <section class="card results-section hidden" id="results-section">
+            <section class="card glass results-section hidden slide-up" id="results-section">
                 <div class="result-header">
                     <h2>Analysis Results</h2>
                     <span class="badge" id="status-badge">Processing...</span>
@@ -58,7 +206,7 @@
                     <h3 id="disease-name">Detecting...</h3>
                     <div class="confidence-container">
                         <div class="confidence-label">
-                            <span>Confidence</span>
+                            <span>Diagnostic Confidence</span>
                             <span id="confidence-percentage">0%</span>
                         </div>
                         <div class="progress-bar">
@@ -67,8 +215,8 @@
                     </div>
                 </div>
 
-                <div class="logic-engine-box">
-                    <div class="advisory-header" style="color: #8e44ad;">
+                <div class="logic-engine-box soft-box">
+                    <div class="advisory-header" style="color: #8b5cf6;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                         </svg>
@@ -79,8 +227,8 @@
                     </div>
                 </div>
 
-                <div class="advisory-box">
-                    <div class="advisory-header">
+                <div class="advisory-box soft-box pb-box">
+                    <div class="advisory-header" style="color: #f59e0b;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                         </svg>
@@ -91,11 +239,40 @@
                     </div>
                 </div>
             </section>
+            
+            <!-- Agriculture Updates Section -->
+            <section class="news-section slide-up delay-2">
+                <div class="section-title-wrap">
+                    <h2 class="news-heading">Live Agriculture Updates</h2>
+                </div>
+                <div class="news-scroll-container">
+                    <div class="news-card glass hover-lift">
+                        <span class="news-tag tag-disease"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"><path stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Disease Alert</span>
+                        <div class="news-headline">Wheat rust outbreak in Punjab &mdash; early spray advised</div>
+                        <div class="news-meta">ICAR &middot; Apr 2026</div>
+                    </div>
+                    <div class="news-card glass hover-lift">
+                        <span class="news-tag tag-market"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"><path stroke-width="2" d="M3 3v18h18M18 9l-5 5-3-3-5 5"/></svg> Market</span>
+                        <div class="news-headline">MSP for Kharif crops raised by 8% this season</div>
+                        <div class="news-meta">Agri Min &middot; Apr 2026</div>
+                    </div>
+                    <div class="news-card glass hover-lift">
+                        <span class="news-tag tag-advisory"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"><path stroke-width="2" d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Advisory</span>
+                        <div class="news-headline">Avoid irrigation 48 hrs before expected rainfall</div>
+                        <div class="news-meta">IMD &middot; Apr 2026</div>
+                    </div>
+                    <div class="news-card glass hover-lift">
+                        <span class="news-tag tag-disease"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"><path stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Disease Alert</span>
+                        <div class="news-headline">Tomato leaf curl virus spreading in Maharashtra</div>
+                        <div class="news-meta">NIPHM &middot; Apr 2026</div>
+                    </div>
+                </div>
+            </section>
         </div>
 
         <!-- History Section -->
-        <aside class="sidebar">
-            <div class="card history-section">
+        <aside class="sidebar slide-up delay-3">
+            <div class="card glass history-section">
                 <div class="history-header">
                     <h3>Recent Analyses</h3>
                     <button id="clear-history" class="btn icon-btn" title="Clear History">
@@ -105,11 +282,19 @@
                     </button>
                 </div>
                 <div class="history-list" id="history-list">
-                    <!-- History items will be inserted here -->
+                    <!-- History items will be inserted here dynamically -->
                 </div>
             </div>
         </aside>
     </main>
+
+    <!-- Footer -->
+    <footer class="app-footer glass">
+        <p>&copy; 2026 AI Crop Advisor. Designed for farmers, powered by Deep Learning.</p>
+    </footer>
+
+    <!-- Floating Tips Widget -->
+    <div id="floating-tips" class="floating-tips"></div>
 
     <script src="script.js"></script>
 </body>
