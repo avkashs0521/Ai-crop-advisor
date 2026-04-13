@@ -1,6 +1,6 @@
 // Configuration
 const MODEL_URL = "https://teachablemachine.withgoogle.com/models/dH4iCaSNQ/";
-const OPENAI_API_KEY = ""; // PASTE YOUR KEY HERE FOR EVALUATION
+const OPENAI_API_KEY = ""; // Add your OpenAI API key here
 
 // DOM Elements
 const dropZone = document.getElementById("drop-zone");
@@ -185,23 +185,33 @@ function getInternalEnsembleAnalysis(disease) {
     const knowledgeBase = {
         "Septoria Leaf Spot": {
             reasoning: "Cross-verification identifies necrotic lesion clusters with distinct chlorotic halos. Spacial distribution matches Septoria Lycopersici morphology.",
-            advisory: "<b>Recommended Actions:</b>\n- Prune lower canopy foliage to increase airflow.\n- Apply organic copper-based fungicides immediately.\n- Disinfect all pruning tools with 10% bleach solution.",
+            advisory: "<b>Recommended Actions:</b>\n- Avoid overhead watering.\n- Apply organic copper-based fungicides.\n- Prune lower foliage to increase airflow.",
             symptoms: ["Necrotic lesions", "Chlorotic halos", "Pycnidia density"]
         },
         "Early Blight": {
             reasoning: "Detection of 'bullseye' concentric ring patterns and interveinal yellowing. Pathogen signature aligns with Alternaria solani biological indicators.",
-            advisory: "<b>Recommended Actions:</b>\n- Remove bottom leaves showing concentric spots.\n- Mulch the base of the plant to prevent soil-splash infections.\n- Plan a 3-year crop rotation (avoid potatoes/tomatoes).",
+            advisory: "<b>Recommended Actions:</b>\n- Prune bottom leaves showing concentric spots.\n- Mulch the base of the plant to prevent soil-splash.\n- Plan a 3-year crop rotation.",
             symptoms: ["Target-spots", "Stem cankers", "Defoliation risk"]
         },
+        "Late Blight": {
+            reasoning: "Spectral analysis detects water-soaked lesions and characteristic white sporulation on leaf undersides. Trigger: Phytophthora infestans.",
+            advisory: "<b>Recommended Actions:</b>\n- Destroy infected plants immediately.\n- Improve ventilation to reduce moisture.\n- Use resistant seeds for future planting.",
+            symptoms: ["Water-soaked lesions", "White fuzz", "Rapid decay"]
+        },
         "Rust": {
-            reasoning: "Spectral analysis detects high-concentration of reddish-orange uredinia (pustules) on leaf undersides. Pathogen signature confirmed as Puccinia graminis.",
-            advisory: "<b>Recommended Actions:</b>\n- Dust sulfur or apply biological control agents like Bacillus subtilis.\n- Increase spacing between plants.\n- Harvest early if infection reaches the upper canopy.",
+            reasoning: "Spectral analysis detects high-concentration of reddish-orange uredinia (pustules) on leaf undersides. Pathogen signature: Puccinia graminis.",
+            advisory: "<b>Recommended Actions:</b>\n- Dust sulfur or apply biological control agents.\n- Increase spacing between plants.\n- Harvest early if infection reaches upper canopy.",
             symptoms: ["Orange pustules", "Spore discharge", "Premature drying"]
         },
+        "Leaf Mold": {
+            reasoning: "Pattern matching identifies pale green spots on upper surface and olive-green mold on the reverse. Trigger: Passalora fulva.",
+            advisory: "<b>Recommended Actions:</b>\n- Reduce humidity below 85%.\n- Increase ventilation in the grow area.\n- Sanitize grow tools and surroundings.",
+            symptoms: ["Pale green spots", "Olive mold", "Leaf curling"]
+        },
         "Healthy": {
-            reasoning: "Spectral leaf analysis indicates optimal chlorophyll a/b ratios and turgor pressure. No pathogenic signatures detected in this sample.",
-            advisory: "<b>Optimal State Maintenance:</b>\n- Maintain current irrigation schedule.\n- Apply preventative Neem oil spray bi-weekly.\n- Ensure adequate localized nutrient availability (N-P-K).",
-            symptoms: ["Clear epidermis", "Deep turgidity"]
+            reasoning: "Spectral leaf analysis indicates optimal chlorophyll a/b ratios and turgor pressure. No pathogenic signatures detected.",
+            advisory: "<b>Optimal State Maintenance:</b>\n- Maintain current irrigation schedule.\n- Apply preventative Neem oil spray bi-weekly.\n- Ensure adequate N-P-K nutrient availability.",
+            symptoms: ["Clear epidermis", "Deep turgidity", "Solid green"]
         }
     };
 
@@ -298,17 +308,20 @@ function runLogicEngine(diseaseName, geminiSymptoms = null) {
     if (symptoms.includes("spots=brown") && symptoms.includes("leaf=yellowing")) {
         html += `Rule match: IF <span class="logic-code">spots=brown AND leaf=yellow</span> &rarr; Target is Early Blight.<br>`;
         diagnosisState = "Early Blight Confirmed";
-    } else if (symptoms.includes("lesions=water_soaked")) {
-        html += `Rule match: IF <span class="logic-code">lesions=water_soaked AND growth=white_fuzz</span> &rarr; Target is Late Blight.<br>`;
+    } else if (symptoms.includes("lesions=water_soaked") || symptoms.includes("growth=white_fuzz")) {
+        html += `Rule match: IF <span class="logic-code">lesions=water_soaked OR growth=white_fuzz</span> &rarr; Target is Late Blight.<br>`;
         diagnosisState = "Late Blight Confirmed";
-    } else if (symptoms.includes("underside=olive_green_mold")) {
+    } else if (symptoms.includes("underside=olive_green_mold") || symptoms.includes("spots=pale_green_to_yellow")) {
         html += `Rule match: IF <span class="logic-code">spots=yellow AND underside=olive_mold</span> &rarr; Target is Leaf Mold.<br>`;
         diagnosisState = "Leaf Mold Confirmed";
-    } else if (symptoms.includes("centers=gray_or_white")) {
-        html += `Rule match: IF <span class="logic-code">spots=circular AND centers=gray</span> &rarr; Target is Leaf Spot.<br>`;
-        diagnosisState = "Leaf Spot Confirmed";
-    } else if (symptoms.includes("spots=none")) {
-        html += `Rule match: IF <span class="logic-code">spots=none AND wilting=false</span> &rarr; Target is Healthy.<br>`;
+    } else if (symptoms.includes("centers=gray_or_white") || symptoms.includes("spots=small_dark_circular")) {
+        html += `Rule match: IF <span class="logic-code">spots=circular AND centers=gray</span> &rarr; Target is Septoria Spot.<br>`;
+        diagnosisState = "Septoria Spot Confirmed";
+    } else if (symptoms.includes("orange_pustules") || symptoms.includes("spores=reddish")) {
+        html += `Rule match: IF <span class="logic-code">pustules=orange AND spores=visible</span> &rarr; Target is Rust.<br>`;
+        diagnosisState = "Rust Disease Confirmed";
+    } else if (symptoms.includes("spots=none") || symptoms.includes("leaf=solid_green")) {
+        html += `Rule match: IF <span class="logic-code">spots=none AND solid_green=true</span> &rarr; Target is Healthy.<br>`;
         diagnosisState = "Plant Healthy Confirmed";
     } else {
         html += `Applying generic pathogen rules...<br>`;
