@@ -19,6 +19,10 @@ const clearHistoryBtn = document.getElementById("clear-history");
 let model;
 let currentImageURL = null;
 let maxPredictions;
+let currentRiskLevel = "Low";
+let currentSeverity = "Unknown";
+let currentDisease = "None";
+let historyChartInstance = null;
 
 // Initialization
 async function initModel() {
@@ -101,6 +105,7 @@ analyzeBtn.addEventListener("click", async () => {
 
     setLoadingState(true);
     resultsSection.classList.remove("hidden");
+    setTimeout(() => resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     document.getElementById("advisory-content").innerHTML = `<div class="loading-pulse">Generating advice from AI...</div>`;
     
     // Create an image element for prediction
@@ -169,15 +174,45 @@ function renderFinalResult(disease, conf, reasoning, advisory, symptoms, mode) {
     const badge = document.getElementById("status-badge");
     badge.className = "badge " + (cleanDisease.includes("healthy") ? "success" : "danger");
 
-    if (currentImageURL) saveToHistory(disease, conf, currentImageURL);
+    currentDisease = disease;
+    const severity = calculateSeverity(symptoms || []);
+
+    if (currentImageURL) saveToHistory(disease, conf, currentImageURL, currentRiskLevel, severity);
     runLogicEngine(disease, symptoms || []);
     document.getElementById("advisory-content").innerHTML = `
         <div style="white-space: pre-line;">
             <p style="margin-bottom: 10px; font-size: 0.9rem; color: var(--primary);">🛡️ <strong>${mode} Analysis Report:</strong></p>
             <i>${reasoning}</i>
             <br><br>
+            <strong style="color: var(--secondary);">AI Dynamic Assessment:</strong> Environmental Risk is <b>${currentRiskLevel}</b> | Infection Severity is <b>${severity}</b>.
+            <br><br>
             ${advisory}
         </div>`;
+}
+
+function calculateSeverity(symptoms) {
+    let level = "Low";
+    let score = 0;
+    
+    symptoms.forEach(s => {
+        const lowerS = s.toLowerCase();
+        if (lowerS.includes("wilting") || lowerS.includes("decay") || lowerS.includes("rapid") || lowerS.includes("severe") || lowerS.includes("defoliation")) score += 3;
+        else if (lowerS.includes("yellowing") || lowerS.includes("spread") || lowerS.includes("mold") || lowerS.includes("cankers") || lowerS.includes("fuzz")) score += 2;
+        else if (lowerS.includes("spots") || lowerS.includes("lesions") || lowerS.includes("pustules")) score += 1;
+    });
+    
+    if (score >= 3) level = "High";
+    else if (score == 2) level = "Medium";
+    
+    currentSeverity = level;
+    const badge = document.getElementById("severity-badge");
+    if(badge) {
+        badge.textContent = "Severity: " + level;
+        if (level === "High") badge.className = "badge danger";
+        else if (level === "Medium") badge.className = "badge warning";
+        else badge.className = "badge success";
+    }
+    return level;
 }
 
 // High-Precision Internal Expert Library (Primary for Offline Evaluation)
@@ -365,12 +400,14 @@ function setLoadingState(isLoading) {
 }
 
 // History Management
-function saveToHistory(disease, confidence, imageSrc) {
+function saveToHistory(disease, confidence, imageSrc, riskLevel = "Low", severity = "Unknown") {
     let history = JSON.parse(localStorage.getItem("cropHistory")) || [];
     const newItem = {
         id: Date.now(),
         disease,
         confidence,
+        riskLevel,
+        severity,
         date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString(),
         // To avoid localStorage quota issues with large base64 strings, we can compress or just keep a small subset
         image: imageSrc 
@@ -397,6 +434,7 @@ function loadHistory(historyData = null) {
     
     if (history.length === 0) {
         historyList.innerHTML = `<p class="text-gray text-sm center">No recent analyses</p>`;
+        updateChart([]);
         return;
     }
 
@@ -410,12 +448,58 @@ function loadHistory(historyData = null) {
         div.className = "history-item";
         div.innerHTML = `
             <img src="${item.image}" class="history-thumb" alt="Crop">
-            <div class="history-info">
+            <div class="history-info" style="flex:1;">
                 <div class="history-disease">${item.disease} <span style="color:${confColor}; font-size: 0.8rem; font-weight: 600;">(${item.confidence}%)</span></div>
+                <div style="font-size: 0.8rem; margin-bottom: 0.2rem;">Risk: <b>${item.riskLevel || 'Low'}</b> | Severity: <b>${item.severity || 'Unknown'}</b></div>
                 <div class="history-meta">${item.date}</div>
             </div>
         `;
         historyList.appendChild(div);
+    });
+    
+    updateChart(history);
+}
+
+function updateChart(history) {
+    const ctx = document.getElementById('historyChart');
+    if(!ctx) return;
+    
+    const diseaseCounts = {};
+    history.forEach(item => {
+        diseaseCounts[item.disease] = (diseaseCounts[item.disease] || 0) + 1;
+    });
+    
+    const labels = Object.keys(diseaseCounts);
+    const data = Object.values(diseaseCounts);
+    
+    if (historyChartInstance) {
+        historyChartInstance.destroy();
+    }
+    
+    historyChartInstance = new Chart(ctx.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Disease Frequency',
+                data: data,
+                backgroundColor: [
+                    '#10b981', '#0ea5e9', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
+                ],
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.1)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: { color: 'var(--text-main)' }
+                }
+            }
+        }
     });
 }
 
@@ -505,3 +589,156 @@ setInterval(() => {
         renderTip(currentTipIndex);
     }, 400); 
 }, 5000);
+
+// Weather Risk Prediction Logic (Updated to API)
+const cityInput = document.getElementById("city-input");
+const fetchWeatherBtn = document.getElementById("fetch-weather-btn");
+const weatherResultBox = document.getElementById("weather-result-box");
+const weatherCityName = document.getElementById("weather-city-name");
+const weatherTemp = document.getElementById("weather-temp");
+const weatherHumidity = document.getElementById("weather-humidity");
+const riskBadge = document.getElementById("risk-badge");
+
+async function fetchWeatherAndCalculateRisk(cityName) {
+    if(!cityInput) return;
+    const city = (typeof cityName === 'string' ? cityName : cityInput.value.trim());
+    if (!city) {
+        alert("Please enter a city name.");
+        return;
+    }
+    
+    fetchWeatherBtn.textContent = "Checking...";
+    fetchWeatherBtn.disabled = true;
+    
+    try {
+        const response = await fetch(`/api/weather?city=${encodeURIComponent(city)}`);
+        if (!response.ok) throw new Error("City not found or API error");
+        
+        const data = await response.json();
+        
+        const temp = data.main.temp;
+        const humidity = data.main.humidity;
+        const cityName = data.name;
+        
+        weatherTemp.textContent = Math.round(temp);
+        weatherHumidity.textContent = Math.round(humidity);
+        weatherCityName.textContent = cityName;
+        
+        let level = "Low";
+        
+        if (humidity > 80 && temp >= 20 && temp <= 30) {
+            level = "High";
+            riskBadge.style.color = "var(--danger)";
+        } else if (humidity >= 60 && humidity <= 80) {
+            level = "Medium";
+            riskBadge.style.color = "var(--warning)";
+        } else {
+            riskBadge.style.color = "var(--success)";
+        }
+        
+        currentRiskLevel = level;
+        riskBadge.textContent = "Risk Level: " + level;
+        
+        weatherResultBox.classList.remove("hidden");
+    } catch (error) {
+        console.error("Weather fetch error:", error);
+        alert("Could not fetch weather data. Please check the city name and try again.");
+    } finally {
+        fetchWeatherBtn.textContent = "Check Risk";
+        fetchWeatherBtn.disabled = false;
+    }
+}
+
+if(fetchWeatherBtn) {
+    fetchWeatherBtn.addEventListener("click", () => fetchWeatherAndCalculateRisk());
+    cityInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") fetchWeatherAndCalculateRisk();
+    });
+    // Default load for Pune
+    cityInput.value = "Pune";
+    fetchWeatherAndCalculateRisk("Pune");
+}
+
+// Chatbot Integration Logic
+const chatbotToggle = document.getElementById("chatbot-toggle");
+const chatbotPanel = document.getElementById("chatbot-panel");
+const chatbotClose = document.getElementById("chatbot-close");
+const chatbotInput = document.getElementById("chatbot-input");
+const chatbotSend = document.getElementById("chatbot-send");
+const chatbotMessages = document.getElementById("chatbot-messages");
+
+if(chatbotToggle) {
+    chatbotToggle.addEventListener("click", () => {
+        chatbotPanel.classList.toggle("hidden");
+    });
+
+    chatbotClose.addEventListener("click", () => {
+        chatbotPanel.classList.add("hidden");
+    });
+
+    function addMessage(text, isBot) {
+        const div = document.createElement("div");
+        div.className = `message ${isBot ? 'bot-message' : 'user-message'}`;
+        div.textContent = text;
+        chatbotMessages.appendChild(div);
+        chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+    }
+
+    chatbotSend.addEventListener("click", handleChatbotInput);
+    chatbotInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") handleChatbotInput();
+    });
+
+    async function handleChatbotInput() {
+        const text = chatbotInput.value.trim();
+        if (!text) return;
+        addMessage(text, false);
+        chatbotInput.value = "";
+        
+        // Show loading state
+        const loadingDiv = document.createElement("div");
+        loadingDiv.className = "message bot-message loading-pulse";
+        loadingDiv.textContent = "Thinking...";
+        chatbotMessages.appendChild(loadingDiv);
+        chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+        
+        try {
+            const contextMsg = `User is asking about crop disease. Current context - Disease: ${currentDisease || "Unknown"}, Risk: ${currentRiskLevel || "Unknown"}, Severity: ${currentSeverity || "Unknown"}. User says: ${text}`;
+            
+            const response = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    messages: [{ role: "user", content: contextMsg }]
+                })
+            });
+            
+            if (!response.ok) throw new Error("API response error");
+            const data = await response.json();
+            
+            chatbotMessages.removeChild(loadingDiv);
+            
+            const aiReply = data.choices && data.choices[0] && data.choices[0].message.content
+                ? data.choices[0].message.content
+                : "Sorry, I couldn't understand that.";
+            
+            addMessage(aiReply, true);
+        } catch (error) {
+            console.error("Chatbot API error:", error);
+            chatbotMessages.removeChild(loadingDiv);
+            addMessage("I'm sorry, I'm having trouble connecting right now.", true);
+        }
+    }
+}
+
+// Smooth Scroll for History Link
+const historyLink = document.querySelector('a[href="#history-list"]');
+if (historyLink) {
+    historyLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        const historySection = document.querySelector(".history-section");
+        if (historySection) {
+            historySection.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+    });
+}
