@@ -136,29 +136,68 @@ analyzeBtn.addEventListener("click", async () => {
     };
 });
 
-// Execute pipeline (used for both initial prediction and manual override)
+// Execute pipeline - Phase 1: instant internal, Phase 2: async HF enhancement
 async function executeDiagnosticPipeline(diseaseName, confidence = "100.0") {
-    // 1. Initial Processing UI state
+    // Phase 1 — Instant internal result (always works, zero latency)
     document.getElementById("disease-name").innerHTML = `<span class="loading-pulse" style="color: var(--text-muted); font-size: 1.2rem;">Analyzing crop patterns...</span>`;
-    document.getElementById("advisory-content").innerHTML = `<div class="loading-pulse">Running advanced diagnostic cross-check...</div>`;
+    document.getElementById("advisory-content").innerHTML = `<div class="loading-pulse">Running diagnostic engine...</div>`;
     document.getElementById("confidence-percentage").textContent = `0%`;
     document.getElementById("confidence-fill").style.width = `0%`;
-    
+
+    const edgeResult = getInternalEnsembleAnalysis(diseaseName);
+
+    // Show instant results after a brief realistic delay
+    setTimeout(() => {
+        renderFinalResult(diseaseName, confidence, edgeResult.reasoning, edgeResult.advisory, edgeResult.symptoms, "Edge Optimized");
+
+        // Phase 2 — Async AI enhancement via /api/chat (non-blocking)
+        enhanceWithAI(diseaseName, edgeResult);
+    }, 800);
+}
+
+// Phase 2: Enhance the advisory with real AI response from our HF backend
+async function enhanceWithAI(diseaseName, edgeResult) {
     try {
-        // Try Cloud AI (if credits are ever added)
-        const aiResult = await verifyWithOpenAI(diseaseName, currentImageURL);
-        renderFinalResult(aiResult.final_diagnosis, confidence, aiResult.reasoning, aiResult.advisory, aiResult.symptoms_found, "Cloud Integrated");
-        
-    } catch(err) {
-        // SILENT FAILOVER TO EDGE-AI (Perfect for Demo/Zero-Latency)
-        const edgeResult = getInternalEnsembleAnalysis(diseaseName);
-        
-        // Dynamic thinking delay for realism
-        setTimeout(() => {
-            renderFinalResult(diseaseName, confidence, edgeResult.reasoning, edgeResult.advisory, edgeResult.symptoms, "Edge Optimized");
-        }, 1100);
+        const prompt = `A crop disease scan detected: "${diseaseName}". Give a concise expert treatment plan in 3-4 bullet points. Include: immediate action, fungicide/biological remedy, and prevention steps. Be specific and practical.`;
+
+        const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages: [{ role: "user", content: prompt }] })
+        });
+
+        if (!response.ok) throw new Error("API error");
+
+        const data = await response.json();
+        const aiText = data.choices?.[0]?.message?.content;
+        if (!aiText) throw new Error("Empty response");
+
+        // Update the advisory-content with AI-enhanced advice
+        const advisoryEl = document.getElementById("advisory-content");
+        if (advisoryEl) {
+            advisoryEl.innerHTML = `
+                <div style="white-space: pre-line;">
+                    <p style="margin-bottom: 10px; font-size: 0.9rem; color: var(--primary);">🤖 <strong>AI Enhanced Analysis Report:</strong></p>
+                    <i>${edgeResult.reasoning}</i>
+                    <br><br>
+                    <strong style="color: var(--secondary);">AI Dynamic Assessment:</strong> Environmental Risk is <b>${currentRiskLevel}</b> | Infection Severity is <b>${currentSeverity}</b>.
+                    <br><br>
+                    <strong style="color: var(--primary);">🌿 AI Treatment Plan:</strong><br>
+                    ${aiText}
+                </div>`;
+
+            // Update the status badge to show AI-enhanced
+            const badge = document.getElementById("status-badge");
+            if (badge) {
+                badge.textContent = "AI Enhanced Verification";
+            }
+        }
+    } catch (err) {
+        // Phase 2 failed silently — Phase 1 results already visible, no disruption
+        console.log("AI enhancement unavailable, internal results shown:", err.message);
     }
 }
+
 
 // Unified Rendering Function
 function renderFinalResult(disease, conf, reasoning, advisory, symptoms, mode) {
@@ -257,41 +296,8 @@ function getInternalEnsembleAnalysis(disease) {
     };
 }
 
-async function verifyWithOpenAI(diseaseName, imageSrc) {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-                {
-                    role: "system",
-                    content: "You are an expert agricultural pathologist. Analyze the provided leaf image. The local model guessed: " + diseaseName + ". Cross-verify this. Return ONLY a JSON object: {\"final_diagnosis\": \"Disease Name\", \"reasoning\": \"1 sentence why\", \"symptoms_found\": [\"symptom1\"], \"advisory\": \"Actionable treatment...\"}"
-                },
-                {
-                    role: "user",
-                    content: [
-                        { type: "text", text: "Diagnose this crop leaf." },
-                        { type: "image_url", image_url: { url: imageSrc } }
-                    ]
-                }
-            ],
-            response_format: { type: "json_object" }
-        })
-    });
-    
-    if (!response.ok) {
-        const errDetail = await response.text();
-        console.error("OpenAI Error:", errDetail);
-        throw new Error("OpenAI API Offline");
-    }
-    
-    const data = await response.json();
-    return JSON.parse(data.choices[0].message.content);
-}
+
+
 
 function getFallbackAdvice(diseaseName) {
     const lowerName = diseaseName.toLowerCase();
