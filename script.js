@@ -406,8 +406,30 @@ function setLoadingState(isLoading) {
 }
 
 // History Management
-function saveToHistory(disease, confidence, imageSrc, riskLevel = "Low", severity = "Unknown") {
-    let history = JSON.parse(localStorage.getItem("cropHistory")) || [];
+// Compress image to a tiny thumbnail before storing (keeps localStorage usage ~3-5KB per entry)
+function createThumbnail(imageSrc, size = 80) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            // Cover-crop to square
+            const ratio = Math.min(img.width, img.height);
+            const sx = (img.width - ratio) / 2;
+            const sy = (img.height - ratio) / 2;
+            ctx.drawImage(img, sx, sy, ratio, ratio, 0, 0, size, size);
+            resolve(canvas.toDataURL('image/jpeg', 0.5)); // ~3-5KB
+        };
+        img.onerror = () => resolve(null); // fail gracefully
+        img.src = imageSrc;
+    });
+}
+
+async function saveToHistory(disease, confidence, imageSrc, riskLevel = "Low", severity = "Unknown") {
+    const thumb = await createThumbnail(imageSrc);
+
     const newItem = {
         id: Date.now(),
         disease,
@@ -415,24 +437,29 @@ function saveToHistory(disease, confidence, imageSrc, riskLevel = "Low", severit
         riskLevel,
         severity,
         date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString(),
-        // To avoid localStorage quota issues with large base64 strings, we can compress or just keep a small subset
-        image: imageSrc 
+        image: thumb || '' // use thumbnail (~4KB) instead of raw base64 (~1MB+)
     };
-    
+
+    let history = JSON.parse(localStorage.getItem("cropHistory")) || [];
     history.unshift(newItem);
-    if (history.length > 5) history.pop(); // Keep only 5 last items to not exceed localStorage limit
-    
+    if (history.length > 5) history.pop();
+
     try {
         localStorage.setItem("cropHistory", JSON.stringify(history));
         loadHistory(history);
     } catch(e) {
-        console.warn("Could not save to localStorage (quota likely exceeded)", e);
-        // Clear old ones and try again
-        history = [newItem];
-        localStorage.setItem("cropHistory", JSON.stringify(history));
-        loadHistory(history);
+        console.warn("localStorage still full, clearing history and retrying...", e);
+        localStorage.removeItem("cropHistory");
+        try {
+            localStorage.setItem("cropHistory", JSON.stringify([newItem]));
+            loadHistory([newItem]);
+        } catch(e2) {
+            console.warn("Could not save even minimal history:", e2);
+            loadHistory([newItem]); // Show in UI without persisting
+        }
     }
 }
+
 
 function loadHistory(historyData = null) {
     const history = historyData || JSON.parse(localStorage.getItem("cropHistory")) || [];
