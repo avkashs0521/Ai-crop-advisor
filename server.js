@@ -25,26 +25,51 @@ app.get('/api/weather', async (req, res) => {
 
         // --- Primary: OpenWeatherMap (if key is configured) ---
         if (apiKey && apiKey !== 'YOUR_API_KEY' && apiKey !== 'your_openweathermap_api_key_here') {
-            const owmRes = await fetch(
-                `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric`
-            );
-            if (owmRes.ok) {
-                return res.json(await owmRes.json());
+            try {
+                const owmRes = await fetch(
+                    `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric`,
+                    { timeout: 5000 }
+                );
+                if (owmRes.ok) {
+                    const data = await owmRes.json();
+                    // Normalize OWM response
+                    const normalised = {
+                        name: data.name,
+                        main: {
+                            temp: data.main.temp,
+                            humidity: data.main.humidity
+                        },
+                        weather: data.weather
+                    };
+                    return res.json(normalised);
+                }
+                console.warn('OpenWeatherMap failed with status:', owmRes.status, 'falling back to wttr.in');
+            } catch (owmError) {
+                console.warn('OpenWeatherMap error:', owmError.message, 'falling back to wttr.in');
             }
-            console.warn('OpenWeatherMap failed, falling back to wttr.in');
         }
 
         // --- Fallback / Default: wttr.in (free, no key required) ---
         const wttrRes = await fetch(
             `https://wttr.in/${encodeURIComponent(city)}?format=j1`,
-            { headers: { 'User-Agent': 'ai-crop-advisor/1.0' } }
+            { 
+                headers: { 'User-Agent': 'ai-crop-advisor/1.0' },
+                timeout: 5000
+            }
         );
 
         if (!wttrRes.ok) {
-            throw new Error(`wttr.in error: ${wttrRes.status}`);
+            console.error('wttr.in error - status:', wttrRes.status);
+            return res.status(404).json({ error: 'City not found. Please check the spelling and try again.' });
         }
 
         const wttr = await wttrRes.json();
+        
+        if (!wttr.current_condition || !wttr.current_condition[0] || !wttr.nearest_area || !wttr.nearest_area[0]) {
+            console.error('Invalid wttr.in response structure');
+            return res.status(500).json({ error: 'Invalid weather data received.' });
+        }
+
         const cc = wttr.current_condition[0];
         const area = wttr.nearest_area[0];
 
@@ -61,7 +86,7 @@ app.get('/api/weather', async (req, res) => {
         res.json(normalised);
     } catch (error) {
         console.error('Weather API Error:', error);
-        res.status(500).json({ error: 'Unable to fetch weather data. Please try again.' });
+        res.status(500).json({ error: 'Unable to fetch weather data. Please check the city name and try again.' });
     }
 });
 

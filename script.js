@@ -664,17 +664,27 @@ async function fetchWeatherAndCalculateRisk(cityName) {
     
     try {
         const response = await fetch(`/api/weather?city=${encodeURIComponent(city)}`);
-        if (!response.ok) throw new Error("City not found or API error");
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            const errorMessage = errorData.error || `Error: ${response.status}`;
+            throw new Error(errorMessage);
+        }
         
         const data = await response.json();
         
+        // Validate response structure
+        if (!data.main || typeof data.main.temp === 'undefined' || typeof data.main.humidity === 'undefined') {
+            throw new Error('Invalid weather data format received');
+        }
+        
         const temp = data.main.temp;
         const humidity = data.main.humidity;
-        const cityName = data.name;
+        const weatherCity = data.name || city;
         
         weatherTemp.textContent = Math.round(temp);
         weatherHumidity.textContent = Math.round(humidity);
-        weatherCityName.textContent = cityName;
+        weatherCityName.textContent = weatherCity;
         
         let level = "Low";
         
@@ -694,7 +704,15 @@ async function fetchWeatherAndCalculateRisk(cityName) {
         weatherResultBox.classList.remove("hidden");
     } catch (error) {
         console.error("Weather fetch error:", error);
-        alert("Could not fetch weather data. Please check the city name and try again.");
+        let userMessage = "Could not fetch weather data. ";
+        if (error.message.includes('not found') || error.message.includes('City')) {
+            userMessage += "Please check the city name spelling and try again.";
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            userMessage += "Please check your internet connection and try again.";
+        } else {
+            userMessage += error.message || "Please try a different city name.";
+        }
+        alert(userMessage);
     } finally {
         fetchWeatherBtn.textContent = "Check Risk";
         fetchWeatherBtn.disabled = false;
