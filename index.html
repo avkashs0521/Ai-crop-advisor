@@ -201,6 +201,17 @@
                         <div class="loading-pulse">Generating advice from AI...</div>
                     </div>
                 </div>
+
+                <!-- NEW FEEDBACK BOX FOR DYNAMIC TRACKING -->
+                <div class="feedback-box soft-box mt-2" id="feedback-widget" style="text-align: center; display: none;">
+                    <h4>Did I get it right?</h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.8rem;">Your feedback improves model accuracy stats.</p>
+                    <div style="display: flex; gap: 1rem; justify-content: center;">
+                        <button id="feedback-yes" class="btn success-btn">👍 Yes, Correct</button>
+                        <button id="feedback-no" class="btn danger-btn">👎 No, Incorrect</button>
+                    </div>
+                    <p id="feedback-thanks" class="hidden mt-1" style="color: var(--success); font-weight: bold;">Thanks for your feedback! Accuracy tracking updated.</p>
+                </div>
             </section>
 
             <!-- Environmental Risk Analysis Section -->
@@ -283,8 +294,8 @@
         <!-- Milestone 2: Accuracy Evaluation Section (Moved to Bottom) -->
         <section class="accuracy-section slide-up delay-2 mt-2" id="accuracy-eval">
             <div class="section-title-wrap">
-                <h2 class="news-heading">📊 Model Accuracy Evaluation</h2>
-                <p class="section-subtitle">Empirical test results from 15 high-fidelity crop samples</p>
+                <h2 class="news-heading">📊 Live Accuracy Evaluation</h2>
+                <p class="section-subtitle">Real-time accuracy based on your feedback</p>
             </div>
 
             <div class="table-container glass mt-2">
@@ -298,54 +309,17 @@
                             <th>Result</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="accuracy-tbody">
+                        <!-- Dynamic accuracy rows will be inserted here -->
                         <tr>
-                            <td>#TR-001</td>
-                            <td>Early Blight</td>
-                            <td>Early Blight</td>
-                            <td>98.4%</td>
-                            <td><span class="status-pass">✅ Correct</span></td>
-                        </tr>
-                        <tr>
-                            <td>#TR-002</td>
-                            <td>Healthy</td>
-                            <td>Healthy</td>
-                            <td>99.1%</td>
-                            <td><span class="status-pass">✅ Correct</span></td>
-                        </tr>
-                        <tr>
-                            <td>#TR-003</td>
-                            <td>Rust</td>
-                            <td>Rust</td>
-                            <td>82.5%</td>
-                            <td><span class="status-pass">✅ Correct</span></td>
-                        </tr>
-                        <tr>
-                            <td>#TR-004</td>
-                            <td>Septoria</td>
-                            <td>Early Blight</td>
-                            <td>64.2%</td>
-                            <td><span class="status-fail">❌ Incorrect</span></td>
-                        </tr>
-                        <tr>
-                            <td>#TR-005</td>
-                            <td>Late Blight</td>
-                            <td>Late Blight</td>
-                            <td>94.7%</td>
-                            <td><span class="status-pass">✅ Correct</span></td>
-                        </tr>
-                        <tr>
-                            <td>#TR-006...15</td>
-                            <td colspan="2">Mixed Samples (10 Samples)</td>
-                            <td>Avg 91%</td>
-                            <td><span class="status-pass">9/10 Correct</span></td>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted);">No feedback recorded yet. Analyze an image and provide feedback!</td>
                         </tr>
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="4" class="text-right"><strong>Final Model Accuracy:</strong></td>
-                            <td class="final-accuracy">
-                                <div class="accuracy-calc">Score: (14/15) &times; 100 = <strong>93.3%</strong></div>
+                            <td colspan="4" class="text-right"><strong>Live Model Accuracy:</strong></td>
+                            <td class="final-accuracy" id="accuracy-tfoot">
+                                <div class="accuracy-calc">Score: (0/0) &times; 100 = <strong>0.0%</strong></div>
                             </td>
                         </tr>
                     </tfoot>

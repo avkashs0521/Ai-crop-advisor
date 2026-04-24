@@ -227,6 +227,22 @@ function renderFinalResult(disease, conf, reasoning, advisory, symptoms, mode) {
             <br><br>
             ${advisory}
         </div>`;
+
+    // Show feedback tracking widget
+    const feedWidget = document.getElementById("feedback-widget");
+    if (feedWidget) {
+        feedWidget.style.display = "block";
+        document.getElementById("feedback-thanks").classList.add("hidden");
+        document.getElementById("feedback-yes").style.display = "inline-block";
+        document.getElementById("feedback-no").style.display = "inline-block";
+        
+        // Save current prediction context globally for tracking
+        window.currentPredictionContext = {
+            id: "#TR-" + String(Date.now()).slice(-4),
+            disease: disease,
+            confidence: conf
+        };
+    }
 }
 
 function calculateSeverity(symptoms) {
@@ -389,6 +405,9 @@ resetBtn.addEventListener("click", () => {
     resultsSection.classList.add("hidden");
     document.getElementById("logic-content").innerHTML = `<div class="loading-pulse">Evaluating rules...</div>`;
     
+    const feedWidget = document.getElementById("feedback-widget");
+    if(feedWidget) feedWidget.style.display = "none";
+
     // reset bars
     document.getElementById("confidence-fill").style.width = `0%`;
 });
@@ -775,3 +794,74 @@ if (historyLink) {
         }
     });
 }
+
+// Dynamic Accuracy Tracking Logic
+function initAccuracyTracking() {
+    renderAccuracyTable();
+
+    const btnYes = document.getElementById("feedback-yes");
+    const btnNo = document.getElementById("feedback-no");
+    if(btnYes) btnYes.addEventListener("click", () => handleFeedback(true));
+    if(btnNo) btnNo.addEventListener("click", () => handleFeedback(false));
+}
+
+function handleFeedback(isCorrect) {
+    document.getElementById("feedback-yes").style.display = "none";
+    document.getElementById("feedback-no").style.display = "none";
+    document.getElementById("feedback-thanks").classList.remove("hidden");
+
+    let trackingData = JSON.parse(localStorage.getItem("accuracyData")) || [];
+    const ctx = window.currentPredictionContext || { id: "#TR-XXXX", disease: "Unknown", confidence: "0" };
+    
+    trackingData.push({
+        id: ctx.id,
+        predicted: ctx.disease,
+        confidence: ctx.confidence + "%",
+        isCorrect: isCorrect
+    });
+    
+    if (trackingData.length > 10) trackingData.shift(); // Keep last 10
+    
+    localStorage.setItem("accuracyData", JSON.stringify(trackingData));
+    renderAccuracyTable();
+}
+
+function renderAccuracyTable() {
+    const trackingData = JSON.parse(localStorage.getItem("accuracyData")) || [];
+    const tbody = document.getElementById("accuracy-tbody");
+    const tfoot = document.getElementById("accuracy-tfoot");
+    if (!tbody || !tfoot) return;
+
+    if (trackingData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No feedback recorded yet. Analyze an image and click 👍 or 👎 to log your first stat.</td></tr>`;
+        tfoot.innerHTML = `<div class="accuracy-calc">Score: (0/0) &times; 100 = <strong>0.0%</strong></div>`;
+        return;
+    }
+
+    let correctCount = 0;
+    tbody.innerHTML = "";
+    
+    trackingData.forEach(item => {
+        if (item.isCorrect) correctCount++;
+        
+        // If wrong, we assume the true disease was physically not the predicted one.
+        const actualDiseaseText = item.isCorrect ? item.predicted : "Other / False Pos";
+        const statusHtml = item.isCorrect ? '<span class="status-pass">✅ Correct</span>' : '<span class="status-fail">❌ Incorrect</span>';
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${item.id}</td>
+                <td>${actualDiseaseText}</td>
+                <td>${item.predicted}</td>
+                <td>${item.confidence}</td>
+                <td>${statusHtml}</td>
+            </tr>
+        `;
+    });
+
+    const calcPercent = ((correctCount / trackingData.length) * 100).toFixed(1);
+    tfoot.innerHTML = `<div class="accuracy-calc">Score: (${correctCount}/${trackingData.length}) &times; 100 = <strong>${calcPercent}%</strong></div>`;
+}
+
+// Initialize accuracy dynamic system on load
+initAccuracyTracking();
