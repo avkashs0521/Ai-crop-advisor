@@ -5,11 +5,11 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('./')); // Serve static files from current directory
+app.use(express.static('public')); // Serve static files from public directory
 
 // Weather API Endpoint
 // Uses wttr.in (no API key needed) by default.
